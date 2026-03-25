@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Shop - Inscription</title>
+    <title>Secure Shop - Connexion</title>
     <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
@@ -13,14 +13,35 @@
         <section class="hero">
             <div class="container">
                 <h1>Inscription</h1>
+                
+                <div style="margin-top: 170px" class="profile-card">
+                    <form action="/api/auth/login" method="POST">
+                        <div class="form-group">
+                            <label for="username">Nom d'utilisateur</label>
+                            <input type="text" id="username" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="username">E-mail</label>
+                            <input type="text" id="email" name="email" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Mot de passe</label>
+                            <input type="password" id="password" name="password" required 
+                                   style="width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;">
+                        </div>
 
-                <p>Placer un formulaire d'inscription ici</p>
+                        <button type="submit" style="width: 100%; margin-top: 1rem;">
+                            S' inscrire
+                        </button>
+                    </form>
+                </div>
 
             </div>
         </section>
     </main>
 
-    <footer id="contact" class="footer">
+    <footer style="margin-top: 70px" id="contact" class="footer">
         <div class="container">
             <p>Projet pedagogique - ETML 183</p>
         </div>
