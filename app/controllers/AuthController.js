@@ -1,53 +1,70 @@
-const req = require("express/lib/request");
+const bcrypt = require("bcrypt");
 const db = require("../config/db");
+const dotenv = require("dotenv");
+
+dotenv.config();
+const PEPPER = process.env.PEPPER;
 
 module.exports = {
   // ----------------------------------------------------------
   // POST /api/auth/login
   // ----------------------------------------------------------
-  login: (req, res) => {
-    const { email, password } = req.body;
+  login: async (req, res) => {
+    try {
+      const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email et mot de passe requis" });
+      if (!email || !password) {
+        return res.status(400).json({ error: "Tous les champs sont requis" });
+      }
+
+      const query = "SELECT * FROM users WHERE email = ?";
+      const [users] = await db.promise().query(query, [email]);
+
+      if (users.length === 0) {
+        return res.status(401).json({ error: "Identifiants invalides" });
+      }
+
+      const user = users[0];
+      const passwordWithPepper = password + PEPPER;
+      const match = await bcrypt.compare(passwordWithPepper, user.password);
+
+      if (!match) {
+        return res.status(401).json({ error: "Identifiants invalides" });
+      }
+
+      return res.redirect("/");
+    } catch (err) {
+      console.error("Erreur Login:", err);
+      return res.status(500).json({ error: "Erreur serveur interne" });
     }
-
-    const query = `SELECT * FROM users WHERE email = '${email}' AND password = '${password}'`;
-
-    db.query(query, (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: err.message, query: query });
-      }
-
-      if (results.length === 0) {
-        return res
-          .status(401)
-          .json({ error: "Email ou mot de passe incorrect" });
-      }
-      //Rediriger a la "maison"
-      res.redirect("/");
-      //res.json({ message: "Connexion réussie", user: results[0] });
-    });
   },
 
   // ----------------------------------------------------------
   // POST /api/auth/register
   // ----------------------------------------------------------
-  register: (req, res) => {
-    const { username, email, adresse, password } = req.body;
-    const query = `INSERT INTO users (username, email, password, address)
-                       VALUES('${username}', '${email}', '${password}', '${adresse}')`;
+  register: async (req, res) => {
+    try {
+      const { username, email, adresse, password } = req.body;
 
-    db.query(query, (err, results) => {
-      if (err) {
-        return res.status(500).json({ error: err.message, query: query });
+      if (!username || !email || !password) {
+        return res.status(400).json({ error: "Données manquantes" });
       }
-      console.log(
-        `Utilisateur crée (${username}) avec l'ID:`,
-        results.insertId,
-        `\nemail: ${email}\nadresse: ${adresse}`,
-      );
-      res.redirect("/login");
-    });
+
+      const passwordWithPepper = password + PEPPER;
+      const hashedPassword = await bcrypt.hash(passwordWithPepper, 10);
+
+      const query =
+        "INSERT INTO users (username, email, password, address) VALUES (?, ?, ?, ?)";
+      const [results] = await db
+        .promise()
+        .query(query, [username, email, hashedPassword, adresse]);
+
+      console.log(`Utilisateur créé : ${username} (ID: ${results.insertId})`);
+
+      return res.redirect("/login");
+    } catch (err) {
+      console.error("Erreur Register:", err);
+      return res.status(500).json({ error: "Impossible de créer le compte" });
+    }
   },
 };
