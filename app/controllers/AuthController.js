@@ -24,28 +24,30 @@ module.exports = {
           .status(401)
           .json({ error: "Email ou mot de passe incorrect" });
       }
-
-      res.json({ message: "Connexion réussie", user: results[0] });
+      //Rediriger a la "maison"
+      res.redirect("/");
+      //res.json({ message: "Connexion réussie", user: results[0] });
     });
   },
 
   // ----------------------------------------------------------
   // POST /api/auth/register
   // ----------------------------------------------------------
-  register: (_req, res) => {
+  register: (req, res) => {
     const { username, email, adresse, password } = req.body;
-    const query = `NSERT INTO users (username, email, password, address)
+    const query = `INSERT INTO users (username, email, password, address)
                        VALUES('${username}', '${email}', '${password}', '${adresse}')`;
 
     db.query(query, (err, results) => {
       if (err) {
         return res.status(500).json({ error: err.message, query: query });
       }
-      res.json({
-        message: "Utilisateur crée",
-        userId: results.insertId,
-      });
+      console.log(
+        `Utilisateur crée (${username}) avec l'ID:`,
+        results.insertId,
+        `\nemail: ${email}\nadresse: ${adresse}`,
+      );
+      res.redirect("/login");
     });
-    res.status(501).json({ error: "Non implémenté — TODO exercice 7" });
   },
 };
