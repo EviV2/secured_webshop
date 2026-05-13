@@ -26,6 +26,7 @@
               </div>
               <div class="form-group">
                 <label for="adresse">Adresse</label>
+                <!--Rajoute du nombre de char minimum et un pattern qui oblige a mettre un charactere spécial entre ces cinq (@#?$% )-->
                 <input type="text" id="adresse" name="adresse" required />
               </div>
 
@@ -35,6 +36,9 @@
                   type="password"
                   id="password"
                   name="password"
+                  minlength="6"
+                  pattern="(?=.*[@#?$%]).*"
+                  title="Le mot de passe doit contenir au minimum 6 charactère et un charactère spécial dans la list suivante (@#?$% )"
                   required
                   style="
                     width: 100%;
