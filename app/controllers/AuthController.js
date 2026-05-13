@@ -46,8 +46,11 @@ module.exports = {
         },
       );
 
-      // SUCCÈS -> On glisse le token dans un cookie et ON REDIRIGE !
-      res.cookie("jwt", token, { httpOnly: true, secure: false });
+      res.cookie("jwt", token, {
+        httpOnly: true,
+        secure: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24h comme le jwt (24heure 60 minute 60 seconds 100 mili)
+      });
       return res.redirect("/");
     } catch (err) {
       // ERREUR SERVEUR -> JSON

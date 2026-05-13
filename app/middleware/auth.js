@@ -8,9 +8,13 @@ const verifyToken = (req, res, next) => {
   const token = req.cookies ? req.cookies.jwt : null;
 
   if (!token) {
-    return res
-      .status(401)
-      .json({ error: "Accès refusé. Veuillez vous connecter." });
+    //Si l'user na pas de token on l'envoie se connecter avec une alerte
+    return res.send(`
+    <script>
+        alert("Veuillez vous connecter pour voir votre profile.");
+        window.location.href = "/login";
+    </script>
+`);
   }
 
   try {
