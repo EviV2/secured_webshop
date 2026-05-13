@@ -13,7 +13,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const cookieParser = require("cookie-parser");
-
 //Création cooks
 app.use(cookieParser());
 
@@ -34,6 +33,13 @@ app.use("/api/admin", adminRoute);
 const homeRoute = require("./routes/Home");
 const userRoute = require("./routes/User");
 
+// ---------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------
+
+const verifyToken = require("./middleware/auth");
+const verifyAdmin = require("./middleware/admin");
+
 app.use("/", homeRoute);
 app.use("/user", userRoute);
 
@@ -43,10 +49,10 @@ app.get("/login", (_req, res) =>
 app.get("/register", (_req, res) =>
   res.sendFile(path.join(__dirname, "views", "register.html")),
 );
-app.get("/profile", (_req, res) =>
+app.get("/profile", verifyToken, (_req, res) =>
   res.sendFile(path.join(__dirname, "views", "profile.html")),
 );
-app.get("/admin", (_req, res) =>
+app.get("/admin", verifyToken, verifyAdmin, (_req, res) =>
   res.sendFile(path.join(__dirname, "views", "admin.html")),
 );
 
