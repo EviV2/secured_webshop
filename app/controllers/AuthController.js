@@ -1,9 +1,11 @@
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 const dotenv = require("dotenv");
 
 dotenv.config();
 const PEPPER = process.env.PEPPER;
+const JWT_PEPPER = process.env.JWT_PEPPER;
 
 module.exports = {
   // ----------------------------------------------------------
@@ -13,6 +15,7 @@ module.exports = {
     try {
       const { email, password } = req.body;
 
+      // ERREUR -> On renvoie du JSON
       if (!email || !password) {
         return res.status(400).json({ error: "Tous les champs sont requis" });
       }
@@ -20,6 +23,7 @@ module.exports = {
       const query = "SELECT * FROM users WHERE email = ?";
       const [users] = await db.promise().query(query, [email]);
 
+      // ERREUR -> On renvoie du JSON
       if (users.length === 0) {
         return res.status(401).json({ error: "Identifiants invalides" });
       }
@@ -28,12 +32,25 @@ module.exports = {
       const passwordWithPepper = password + PEPPER;
       const match = await bcrypt.compare(passwordWithPepper, user.password);
 
+      // ERREUR -> On renvoie du JSON
       if (!match) {
         return res.status(401).json({ error: "Identifiants invalides" });
       }
 
+      // SUCCÈS -> On crée le token
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        JWT_PEPPER,
+        {
+          expiresIn: "24h",
+        },
+      );
+
+      // SUCCÈS -> On glisse le token dans un cookie et ON REDIRIGE !
+      res.cookie("jwt", token, { httpOnly: true, secure: false });
       return res.redirect("/");
     } catch (err) {
+      // ERREUR SERVEUR -> JSON
       console.error("Erreur Login:", err);
       return res.status(500).json({ error: "Erreur serveur interne" });
     }
@@ -46,6 +63,7 @@ module.exports = {
     try {
       const { username, email, adresse, password } = req.body;
 
+      // ERREUR -> On renvoie du JSON
       if (!username || !email || !password) {
         return res.status(400).json({ error: "Données manquantes" });
       }
@@ -61,8 +79,10 @@ module.exports = {
 
       console.log(`Utilisateur créé : ${username} (ID: ${results.insertId})`);
 
+      // SUCCÈS -> ON REDIRIGE vers la connexion !
       return res.redirect("/login");
     } catch (err) {
+      // ERREUR SERVEUR -> JSON
       console.error("Erreur Register:", err);
       return res.status(500).json({ error: "Impossible de créer le compte" });
     }
