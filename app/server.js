@@ -58,14 +58,14 @@ app.get("/admin", verifyToken, verifyAdmin, (_req, res) =>
   res.sendFile(path.join(__dirname, "views", "admin.html")),
 );
 
-// Démarrage du serveur
+// start du serveur
 app.get("/test", (_req, res) => res.send("db admin: root, pwd : root"));
 const options = {
   key: fs.readFileSync("server.key"),
   cert: fs.readFileSync("server.cert"),
 };
 
-// On démarre le serveur en mode HTTPS !
+// On démarre le serveur en HTTPS
 https.createServer(options, app).listen(8080, () => {
   console.log("Secured server started on https://localhost:8080 !");
 });
