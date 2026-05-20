@@ -47,7 +47,7 @@ module.exports = {
     `);
       }
 
-      // SUCCÈS -> On crée le token
+      // succes -> On crée le token
       const token = jwt.sign(
         {
           id: user.id,

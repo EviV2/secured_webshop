@@ -2,8 +2,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const nav = document.getElementById("topbar");
   if (!nav) return;
 
-  //link ici est une list qui contient les liens de nav que je vais afficher (marrant que l'on sois pas obliger d'utiliser des loops pour afficher ca)
-  let links = `<a href="/">Accueil</a>`; // Le lien toujours présent
+  //link ici est une list qui contient les liens de nav que je vais afficher
+  let links = `<a href="/">Accueil</a>`;
 
   try {
     const response = await fetch("/api/auth/status");
@@ -22,7 +22,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       links += `<span style="margin-left:15px; color:#00D2AF;">(${data.username})</span>`;
     } else {
-      // Liens au cas ou même si ils vont dans le catch si ils ne sont pas connecter
       links += `
         <a href="/login">Connexion</a>
         <a href="/register">Inscription</a>
