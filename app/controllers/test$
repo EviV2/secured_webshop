@@ -1,0 +1,142 @@
+login: async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const maintenant = new Date();
+
+    // 1. Validation de la présence des champs
+    if (!email || !password) {
+      return res.status(400).json({ error: "Tous les champs sont requis" });
+    }
+
+    // 2. Extraction de l'utilisateur et de ses compteurs de sécurité
+    const query =
+      "SELECT id, email, password, role, username, login_attempts, lock_until, first_failed_attempt FROM users WHERE email = ?";
+    const [users] = await db.promise().query(query, [email]);
+
+    if (users.length === 0) {
+      return res.status(400).send(`
+        <script>
+            alert("Ce nom d'utilisateur ou cet email n'existe pas !");
+            window.history.back(); 
+        </script>
+      `);
+    }
+
+    const user = users[0];
+
+    // 3. VÉRIFICATION DU VERROU (Anti-spam actif)
+    if (user.lock_until && new Date(user.lock_until) > maintenant) {
+      const secondesRestantes = Math.ceil(
+        (new Date(user.lock_until) - maintenant) / 1000,
+      );
+      return res.status(403).send(`
+        <script>
+            alert("Compte temporairement bloqué. Réessayez dans ${secondesRestantes} secondes.");
+            window.history.back();
+        </script>
+      `);
+    }
+
+    // 4. Test du mot de passe avec Pepper global
+    const passwordWithPepper = password + PEPPER;
+    const match = await bcrypt.compare(passwordWithPepper, user.password);
+
+    if (!match) {
+      // ❌ LE MOT DE PASSE EST FAUX
+      let newAttempts = 1;
+      let firstFailed = maintenant; // Par défaut, on ouvre une nouvelle minute
+      let lockUntil = null;
+
+      if (user.first_failed_attempt) {
+        const tempsEcouleDepuisLAncre =
+          maintenant - new Date(user.first_failed_attempt);
+
+        // Si l'échec est dans la même minute glissante que l'ancre
+        if (tempsEcouleDepuisLAncre < 60000) {
+          newAttempts = user.login_attempts + 1;
+          firstFailed = user.first_failed_attempt; // On garde l'ancre d'origine
+        }
+      }
+
+      // --- RÈGLE A : Seuil critique des 15 échecs (Blocage de 15 minutes) ---
+      if (newAttempts >= 15) {
+        let dateFin = new Date();
+        dateFin.setMinutes(dateFin.getMinutes() + 15);
+        lockUntil = dateFin;
+        newAttempts = 0; // Reset total du compteur
+        firstFailed = null; // Purge de l'ancre
+        console.log(
+          `🚨 COMPTE VERROUILLÉ 15 MINUTES : [${email}] (15 échecs globaux)`,
+        );
+      }
+      // --- RÈGLE B : Palier de 5 échecs rapides (Blocage de 1 minute) ---
+      else if (
+        newAttempts % 5 === 0 &&
+        maintenant - new Date(firstFailed) < 60000
+      ) {
+        let dateFin = new Date();
+        dateFin.setMinutes(dateFin.getMinutes() + 1);
+        lockUntil = dateFin;
+
+        // CORRECTION : On ne remet PAS newAttempts à 0. Il reste à 5 ou 10 pour pouvoir viser les 15.
+        // On vide simplement l'ancre pour forcer une nouvelle minute glissante au prochain essai.
+        firstFailed = null;
+        console.log(
+          `⚠️ COMPTE CALMÉ 1 MINUTE : [${email}] (Palier d'échecs rapides : ${newAttempts})`,
+        );
+      }
+
+      // Sauvegarde des 3 variables de sécurité
+      await db.promise().query(
+        `UPDATE users SET 
+            login_attempts = ?, 
+            lock_until = ?, 
+            first_failed_attempt = ? 
+         WHERE id = ?`,
+        [newAttempts, lockUntil, firstFailed, user.id],
+      );
+
+      return res.status(400).send(`
+        <script>
+            alert("Mot de passe incorrect !");
+            window.history.back();
+        </script>
+      `);
+    }
+
+    // 👍 LE MOT DE PASSE EST BON
+    // Remise à zéro complète des compteurs de sécurité
+    await db.promise().query(
+      `UPDATE users SET 
+          login_attempts = 0, 
+          lock_until = NULL, 
+          first_failed_attempt = NULL 
+       WHERE id = ?`,
+      [user.id],
+    );
+
+    // 5. Génération du JWT
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        username: user.username,
+      },
+      JWT_PEPPER,
+      { expiresIn: "24h" },
+    );
+
+    // 6. Injection du Cookie sécurisé et redirection
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    return res.redirect("/");
+  } catch (err) {
+    console.error("Erreur Login:", err);
+    return res.status(500).json({ error: "Erreur serveur interne" });
+  }
+};
